@@ -156,7 +156,7 @@ let [proposalAccountOwnerPda] = PublicKey.findProgramAddressSync(
   program.programId
 );
 txHash = await program.methods
-  .createProposal("update_info", "statistr01", "0x0034248bc12a")
+  .createProposal("update text", "solana-ventures-55d928", "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a")
   .accounts({
     proposal: proposalAccountOwnerPda,
     otherProposal: initProposalAccountOwnerPda,
