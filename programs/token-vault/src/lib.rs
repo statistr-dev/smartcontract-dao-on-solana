@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount, Transfer};
+use std::str::FromStr;
 
 // This is your program's public key and it will update
 // automatically when you build the project.
-declare_id!("6dHbdCSXq4jhdmSwReXNhqtEKYKcHj2KqMHgAbHS1ZPV");
+declare_id!("33rDuucbYY2PtKc2i9REsn3Shhhyjfk7h1F7s4JKCYeF");
 
 #[program]
 mod token_vault {
@@ -237,6 +238,23 @@ mod token_vault {
         proposal.duration = BASE_VOTING_DURATION;
         Ok(())
     }
+    pub fn precheck_proposal(ctx: Context<PrecheckProposal>, check: bool) -> Result<()> {
+        let proposal = &mut ctx.accounts.proposal;
+        let temp_member_key =
+            Pubkey::from_str("CEy2oCNZXWVkCgo4L6pYk2rswo5Hzbh4SjYUWhgpY5fj").unwrap();
+        assert!(
+            temp_member_key == ctx.accounts.signer.to_account_info().key(),
+            "Error team member"
+        );
+        assert!(
+            proposal.pushlish_at == 0,
+            "Error: the proposal has been precheck"
+        );
+        proposal.pushlish_at = Clock::get()?.unix_timestamp;
+        proposal.precheck = check;
+
+        Ok(())
+    }
     pub fn create_vote(ctx: Context<CreateVote>, vote_type: bool) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
         let vote = &mut ctx.accounts.vote;
@@ -437,17 +455,12 @@ pub struct CreateProposal<'info> {
 }
 
 #[derive(Accounts)]
-pub struct ProposalResult<'info> {
-    #[account()]
+pub struct PrecheckProposal<'info> {
+    #[account(mut)]
     pub proposal: Account<'info, Proposal>,
+    #[account(mut)]
+    signer: Signer<'info>,
 }
-
-#[derive(Accounts)]
-pub struct ProposalDetails<'info> {
-    #[account()]
-    pub proposal: Account<'info, Proposal>,
-}
-
 #[derive(Accounts)]
 pub struct CreateVote<'info> {
     #[account(init, payer = signer, seeds=[b"Vote", proposal.key().as_ref(), signer.key().as_ref()], bump, space = 8 + 256)]
@@ -496,8 +509,10 @@ pub struct Proposal {
     pub votes_no: u64,
     pub reward: u64,
     pub creator_reward_rate: u64,
+    pub precheck: bool,
     pub creator_claimed_reward: bool,
     pub created_at: i64,
+    pub pushlish_at: i64,
     pub duration: u64,
     pub voters: Vec<Pubkey>,
 }
@@ -545,7 +560,6 @@ pub fn determine_term(duration: u64) -> u64 {
     }
     _duration
 }
-
 // const BASE_VOTING_DURATION: u64 = 24 * 60 * 60;
 const BASE_VOTING_DURATION: u64 = 2 * 60;
 // const BASE_STAKING_DURATION: u64 = 24 * 60 * 60 * 90;
