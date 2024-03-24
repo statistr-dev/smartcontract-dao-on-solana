@@ -240,10 +240,13 @@ mod token_vault {
     }
     pub fn precheck_proposal(ctx: Context<PrecheckProposal>, check: bool) -> Result<()> {
         let proposal = &mut ctx.accounts.proposal;
-        let temp_member_key =
+        let team_member_1 =
             Pubkey::from_str("CEy2oCNZXWVkCgo4L6pYk2rswo5Hzbh4SjYUWhgpY5fj").unwrap();
+        let team_member_2 =
+            Pubkey::from_str("yE6zLyKu91hgMoE46TAcx4sCJnzMpzYrSFyAHjbFeuS").unwrap();
         assert!(
-            temp_member_key == ctx.accounts.signer.to_account_info().key(),
+            team_member_1 == ctx.accounts.signer.to_account_info().key()
+                || team_member_2 == ctx.accounts.signer.to_account_info().key(),
             "Error team member"
         );
         assert!(
@@ -265,6 +268,9 @@ mod token_vault {
                 && Clock::get()?.unix_timestamp - stake_ticket.hold_created_at
                     > proposal.duration.try_into().unwrap()))
             && stake_ticket.staker == ctx.accounts.signer.to_account_info().key())
+            && (proposal.precheck
+                && Clock::get()?.unix_timestamp - proposal.pushlish_at
+                    < proposal.duration.try_into().unwrap())
             && !proposal
                 .voters
                 .contains(&stake_ticket.to_account_info().key())
@@ -529,7 +535,8 @@ pub struct Vote {
 pub fn valid_proposal(proposal: &Proposal) -> Result<bool> {
     let mut result: bool = false;
     // let proposal = &ctx.accounts.proposal;
-    if Clock::get()?.unix_timestamp - proposal.created_at > BASE_VOTING_DURATION.try_into().unwrap()
+    if Clock::get()?.unix_timestamp - proposal.pushlish_at > proposal.duration.try_into().unwrap()
+        && proposal.precheck
         && proposal.votes_yes + proposal.votes_no > MIN_VOTE_VALID
     {
         result = true;
